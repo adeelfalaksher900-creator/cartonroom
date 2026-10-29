@@ -1,16 +1,17 @@
 // Allocation is deliberately deterministic and only considers explicit requests.
 // Quantities are whole units of one stock item, not nutritional equivalents.
 export const MAX_QTY = 10000;
+export const MAX_BACKUP_BYTES = 5_000_000;
 export function blankState() { return {version: 1, revision: 0, items: [], requests: [], history: []}; }
 export function quantity(n, allowZero = true) {
   return Number.isInteger(n) && n >= (allowZero ? 0 : 1) && n <= MAX_QTY;
 }
 export function cleanText(s, max = 80) { return typeof s === 'string' ? s.trim().slice(0, max) : ''; }
-const validId = s => typeof s === 'string' && /^[A-Za-z0-9_-]{1,100}$/.test(s) && !['__proto__','constructor','prototype'].includes(s);
+const validId = s => typeof s === 'string' && /^[A-Za-z0-9_-]{1,100}$/.test(s) && !Object.hasOwn(Object.prototype,s) && s !== 'prototype';
 const validDate = d => typeof d === 'string' && (d === '' || (/^\d{4}-\d{2}-\d{2}$/.test(d) && !Number.isNaN(Date.parse(d)) && new Date(d).toISOString().slice(0,10) === d));
 export function validateState(s) {
   if (!s || s.version !== 1 || !Number.isSafeInteger(s.revision) || s.revision < 0 || !Array.isArray(s.items) || !Array.isArray(s.requests) || !Array.isArray(s.history) || s.items.length > 1000 || s.requests.length > 1000 || s.history.length > 1000) throw Error('This backup is not a valid GatherShelf file.');
-  const items = new Set(), requests = new Set();
+  const items = new Set(), requests = new Set(), history = new Set();
   for (const i of s.items) {
     if (!i || !validId(i.id) || items.has(i.id) || !cleanText(i.name) || i.name.length > 80 || !cleanText(i.unit, 20) || i.unit.length > 20 || !quantity(i.qty) || typeof i.category !== 'string' || !i.category.trim() || i.category.length > 40 || !validDate(i.date ?? '')) throw Error('A stock item in this backup is invalid.');
     items.add(i.id);
@@ -22,10 +23,17 @@ export function validateState(s) {
   }
   // History is display-only. Validate shape, bound text and amounts, and reject markup-sized payloads.
   for (const h of s.history) {
-    if (!h || !validId(h.id) || typeof h.at !== 'string' || h.at.length > 40 || Number.isNaN(Date.parse(h.at)) || !Array.isArray(h.rows) || h.rows.length > 10000) throw Error('The distribution history is invalid.');
-    for (const row of h.rows) if (!row || typeof row.label !== 'string' || row.label.length > 80 || typeof row.item !== 'string' || row.item.length > 80 || typeof row.unit !== 'string' || row.unit.length > 20 || !quantity(row.amount, false)) throw Error('A distribution history row is invalid.');
+    if (!h || !validId(h.id) || history.has(h.id) || typeof h.at !== 'string' || h.at.length > 40 || Number.isNaN(Date.parse(h.at)) || !Array.isArray(h.rows) || h.rows.length > 10000) throw Error('The distribution history is invalid.');
+    history.add(h.id);
+    for (const row of h.rows) if (!row || typeof row.label !== 'string' || row.label.length > 80 || typeof row.item !== 'string' || row.item.length > 80 || typeof row.unit !== 'string' || row.unit.length > 20 || !validDate(row.date ?? '') || !quantity(row.amount, false)) throw Error('A distribution history row is invalid.');
   }
   return s;
+}
+export function serializeBackup(state) {
+  validateState(state);
+  const text = JSON.stringify(state);
+  if (new TextEncoder().encode(text).length > MAX_BACKUP_BYTES) throw Error('This workspace has reached the 5 MB capacity. Download a backup and history CSV, then start a new workspace in Settings. Your previous records have not changed.');
+  return text;
 }
 
 // Hamilton/largest-remainder apportionment for each item. Ties use stable request
@@ -71,6 +79,7 @@ export function customizePlan(state, overrides) {
 }
 export function applyPlan(state, p, at = new Date().toISOString(), id = globalThis.crypto.randomUUID()) {
   validateState(state);
+  if (state.history.length >= 1000) throw Error('History is full at 1,000 distributions. Download a backup and history CSV before starting a new workspace in Settings.');
   if (p.revision !== state.revision) throw Error('Stock or requests changed. Build the plan again.');
   const overrides = Object.create(null);
   for (const row of p.rows || []) { overrides[row.id]=Object.create(null); for (const line of row.lines || []) overrides[row.id][line.itemId]=line.amount; }
@@ -85,7 +94,7 @@ export function applyPlan(state, p, at = new Date().toISOString(), id = globalTh
     const item = items.get(line.itemId), req=reqs.get(r.id);
     item.qty -= line.amount; req.lines[line.itemId] -= line.amount;
     if (!req.lines[line.itemId]) delete req.lines[line.itemId];
-    historyRows.push({label:r.label, item:line.name, unit:line.unit, amount:line.amount});
+    historyRows.push({label:r.label, item:line.name, unit:line.unit, date:line.date || '', amount:line.amount});
   }
   next.requests = next.requests.filter(r=>Object.keys(r.lines).length);
   next.history.unshift({id,at,rows:historyRows}); next.revision++;

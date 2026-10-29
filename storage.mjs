@@ -1,4 +1,4 @@
-import { blankState, validateState } from './engine.mjs';
+import { blankState, validateState, serializeBackup } from './engine.mjs';
 
 const DB = 'gathershelf-workspace-v1', STORE = 'workspace', KEY = 'primary';
 let opened;
@@ -32,6 +32,8 @@ export async function readState() {
       catch (error) { reject(error); }
     };
     request.onerror = () => reject(Error('Could not read this workspace.'));
+    tx.onabort = () => reject(Error('Could not read this workspace. Check browser storage and try again.'));
+    tx.onerror = () => {};
   });
 }
 export async function updateState(expected, change) {
@@ -47,7 +49,7 @@ export async function updateState(expected, change) {
         next = change(structuredClone(current));
         if (next.revision === current.revision) next.revision++;
         if (next.revision !== current.revision + 1) throw Error('Invalid workspace revision.');
-        validateState(next); store.put(next, KEY);
+        serializeBackup(next); store.put(next, KEY);
       } catch (error) { failure = error; tx.abort(); }
     };
     tx.oncomplete = () => resolve(next);

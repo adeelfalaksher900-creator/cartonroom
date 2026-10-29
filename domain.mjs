@@ -1,4 +1,4 @@
-import { cleanText, quantity, safeCSV, validateState } from './engine.mjs';
+import { cleanText, quantity, safeCSV, validateState, serializeBackup, MAX_BACKUP_BYTES } from './engine.mjs';
 
 export const CATEGORIES = ['Produce', 'Grains', 'Protein', 'Dairy', 'Pantry', 'Household', 'Other'];
 export function putItem(state, fields, id, editing = false) {
@@ -9,7 +9,10 @@ export function putItem(state, fields, id, editing = false) {
     const index = state.items.findIndex(i => i.id === id);
     if (index < 0) throw Error('This stock item was removed. Close this form and review your stock.');
     state.items[index] = item;
-  } else state.items.push(item);
+  } else {
+    if (state.items.length >= 1000) throw Error('This workspace supports up to 1,000 stock items. Remove unused items or start a new backed-up workspace.');
+    state.items.push(item);
+  }
   return validateState(state);
 }
 export function removeItem(state, id) {
@@ -25,7 +28,10 @@ export function putRequest(state, label, lines, id, editing = false) {
     const index = state.requests.findIndex(r => r.id === id);
     if (index < 0) throw Error('This request was removed. Close this form and review the requests.');
     state.requests[index] = request;
-  } else state.requests.push(request);
+  } else {
+    if (state.requests.length >= 1000) throw Error('This workspace supports up to 1,000 open requests. Complete or remove requests before adding more.');
+    state.requests.push(request);
+  }
   return validateState(state);
 }
 export function filterStock(items, {query = '', category = '', status = 'all', sort = 'name'} = {}) {
@@ -44,12 +50,13 @@ export function stockCSV(items) {
   return rows.map(row => row.map(safeCSV).join(',')).join('\r\n');
 }
 export function historyCSV(history) {
-  const rows = [['Date','Household reference','Item','Quantity','Unit'], ...history.flatMap(h => h.rows.map(r => [h.at,r.label,r.item,r.amount,r.unit]))];
+  const rows = [['Date','Household reference','Item','Quantity','Unit','Best before'], ...history.flatMap(h => h.rows.map(r => [h.at,r.label,r.item,r.amount,r.unit,r.date || '']))];
   return rows.map(row => row.map(safeCSV).join(',')).join('\r\n');
 }
 export function readBackup(text) {
-  if (new TextEncoder().encode(text).length > 5_000_000) throw Error('The backup limit is 5 MB.');
+  if (new TextEncoder().encode(text).length > MAX_BACKUP_BYTES) throw Error('The backup limit is 5 MB.');
   let value;
   try { value = JSON.parse(text); } catch { throw Error('This file is not valid JSON. Choose a GatherShelf backup.'); }
-  return validateState(value);
+  serializeBackup(value);
+  return value;
 }

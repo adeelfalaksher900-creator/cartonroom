@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { blankState, plan, applyPlan } from '../engine.mjs';
+import { blankState, plan, applyPlan, serializeBackup, validateState, MAX_BACKUP_BYTES } from '../engine.mjs';
 import { putItem, putRequest, removeItem, filterStock, stockCSV, historyCSV, readBackup } from '../domain.mjs';
 const item = (name='Rice', qty=4) => ({name, qty, unit:'bags', category:'Grains', date:''});
 function fixture() {
@@ -39,4 +39,39 @@ test('CSV exports include real stock/history and neutralize spreadsheet formulas
   const state=putRequest(s,'@reference',{rice:1},'r1');
   const h=applyPlan(state,plan(state),'2026-10-29T12:00:00Z','d1').history;
   assert.match(historyCSV(h),/"'@reference"/);assert.match(historyCSV(h),/2026-10-29/);
+});
+test('every supported Object.prototype identifier is rejected before request lookups', () => {
+  for (const id of [...Object.getOwnPropertyNames(Object.prototype),'prototype']) {
+    const s=fixture();s.items[0].id=id;
+    assert.throws(()=>readBackup(JSON.stringify(s)),/invalid/);
+  }
+});
+test('canonical backups restore exactly and reject an oversized multibyte workspace', () => {
+  const s=fixture();
+  assert.deepEqual(readBackup(serializeBackup(s)),s);
+  const row={label:'é'.repeat(80),item:'é'.repeat(80),unit:'é'.repeat(20),amount:1,date:''};
+  s.history=Array.from({length:2},(_,i)=>({id:`d${i}`,at:'2026-10-29T00:00:00Z',rows:Array.from({length:7000},()=>({...row}))}));
+  validateState(s);
+  const text=JSON.stringify(s);
+  assert.ok(text.length<MAX_BACKUP_BYTES);
+  assert.ok(new TextEncoder().encode(text).length>MAX_BACKUP_BYTES);
+  assert.throws(()=>serializeBackup(s),/5 MB capacity/);
+  assert.throws(()=>readBackup(text),/5 MB/);
+});
+test('batch dates survive recording, backup and history CSV without changing old backups', () => {
+  const s=putRequest(fixture(),'Reference A',{beans:1},'r1');s.items[1].qty=1;
+  const next=applyPlan(s,plan(s),'2026-10-29T00:00:00Z','d1');
+  assert.equal(readBackup(serializeBackup(next)).history[0].rows[0].date,'2026-11-01');
+  assert.match(historyCSV(next.history),/2026-11-01/);
+  delete next.history[0].rows[0].date;
+  assert.doesNotThrow(()=>readBackup(JSON.stringify(next)));
+  next.history.push(structuredClone(next.history[0]));
+  assert.throws(()=>readBackup(JSON.stringify(next)),/history is invalid/);
+});
+test('history capacity refuses a distribution without changing stock or pending requests', () => {
+  const s=putRequest(fixture(),'Reference A',{rice:1},'r1');
+  s.history=Array.from({length:1000},(_,i)=>({id:`d${i}`,at:'2026-10-29T00:00:00Z',rows:[]}));
+  const original=structuredClone(s);
+  assert.throws(()=>applyPlan(s,plan(s),'2026-10-29T00:00:00Z','new'),/History is full/);
+  assert.deepEqual(s,original);
 });

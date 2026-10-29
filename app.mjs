@@ -1,4 +1,4 @@
-import { blankState, plan, customizePlan, applyPlan, quantity } from './engine.mjs';
+import { blankState, plan, customizePlan, applyPlan, quantity, serializeBackup, MAX_BACKUP_BYTES } from './engine.mjs';
 import { readState, updateState } from './storage.mjs';
 import { CATEGORIES, putItem, removeItem, putRequest, filterStock, stockCSV, historyCSV, readBackup } from './domain.mjs';
 import { icon } from './icons.mjs';
@@ -6,6 +6,7 @@ import { icon } from './icons.mjs';
 const $ = s => document.querySelector(s);
 const esc = value => String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const fmt = n => Number(n).toLocaleString();
+const batchText = item => `${item.name} · ${item.unit} · ${item.date ? `best before ${item.date}` : 'date not set'}`;
 const routes = [
   ['overview','Overview','dashboard'], ['stock','Stock','box'], ['requests','Requests','requests'],
   ['packing','Packing','packing'], ['history','History','history'], ['settings','Settings & backup','settings']
@@ -24,7 +25,7 @@ let channel;
 try { channel = new BroadcastChannel('gathershelf-updates'); } catch { /* Tab refresh still works without BroadcastChannel. */ }
 if (channel) channel.onmessage = async () => {
   try {
-    state = await readState(); preview = null; adjusted = false; render();
+    state = await readState(); preview = null; adjusted = false; render(true);
     toast('Workspace updated in another tab. Review the latest stock before saving.');
   } catch (error) { toast(error.message); }
 };
@@ -63,12 +64,12 @@ function stockResults() {
   const items = filterStock(state.items,stockFilters);
   if (!state.items.length) return empty('Your shelf starts here','Add a stock item, its available quantity and the unit you count it in.',button('Add your first item','add-item','plus'),'box');
   if (!items.length) return empty('No matching stock','Try another search or clear your filters.',button('Clear filters','reset-filters','filter','btn-secondary'),'search');
-  return `<table class="responsive-table stock-table"><thead><tr><th>Item</th><th>Category</th><th class="numeric">On hand</th><th>Best before</th><th>Status</th><th><span class="sr-only">Actions</span></th></tr></thead><tbody>${items.map(i=>`<tr><td class="identity-cell"><strong>${esc(i.name)}</strong></td><td data-label="Category">${esc(i.category)}</td><td class="numeric" data-label="On hand"><strong>${fmt(i.qty)}</strong> <span class="muted">${esc(i.unit)}</span></td><td data-label="Best before">${i.date?esc(i.date):'<span class="muted">Not set</span>'}</td><td data-label="Status"><span class="status ${i.qty?'available':'neutral'}">${i.qty?'In stock':'Out of stock'}</span></td><td class="row-actions">${rowButton(`Edit ${i.name}`,'edit-item',i.id,'edit')}${rowButton(`Remove ${i.name}`,'delete-item',i.id,'trash')}</td></tr>`).join('')}</tbody></table><div class="table-footer" role="status">Showing ${items.length} of ${state.items.length} stock items</div>`;
+  return `<table class="responsive-table stock-table"><thead><tr><th>Item</th><th>Category</th><th class="numeric">On hand</th><th>Best before</th><th>Status</th><th><span class="sr-only">Actions</span></th></tr></thead><tbody>${items.map(i=>`<tr><td class="identity-cell"><strong>${esc(i.name)}</strong></td><td data-label="Category">${esc(i.category)}</td><td class="numeric" data-label="On hand"><strong>${fmt(i.qty)}</strong> <span class="muted">${esc(i.unit)}</span></td><td data-label="Best before">${i.date?esc(i.date):'<span class="muted">Not set</span>'}</td><td data-label="Status"><span class="status ${i.qty?'available':'neutral'}">${i.qty?'In stock':'Out of stock'}</span></td><td class="row-actions">${rowButton(`Edit ${batchText(i)}`,'edit-item',i.id,'edit')}${rowButton(`Remove ${batchText(i)}`,'delete-item',i.id,'trash')}</td></tr>`).join('')}</tbody></table><div class="table-footer" role="status">Showing ${items.length} of ${state.items.length} stock items</div>`;
 }
 function requests() {
   return heading('Household requests','Record the items people choose, using a household reference.',button('Add request','add-request','plus')) +
   `<section class="panel"><div class="panel-heading"><h2>Open requests <span class="count-label">${state.requests.length}</span></h2><span class="muted">Unfilled quantities stay open</span></div>${state.requests.length?
-    `<table class="responsive-table requests-table"><thead><tr><th>Household reference</th><th>Requested items</th><th class="numeric">Total units</th><th><span class="sr-only">Actions</span></th></tr></thead><tbody>${state.requests.map(r=>`<tr><td class="identity-cell"><strong>${esc(r.label)}</strong></td><td data-label="Requested">${Object.entries(r.lines).map(([id,n])=>{const i=state.items.find(i=>i.id===id);return `<span class="request-line">${esc(i.name)} <span class="muted">· ${fmt(n)} ${esc(i.unit)}</span></span>`}).join('')}</td><td data-label="Total units" class="numeric">${fmt(Object.values(r.lines).reduce((a,b)=>a+b,0))}</td><td class="row-actions">${rowButton(`Edit request for ${r.label}`,'edit-request',r.id,'edit')}${rowButton(`Remove request for ${r.label}`,'delete-request',r.id,'trash')}</td></tr>`).join('')}</tbody></table>`:
+    `<table class="responsive-table requests-table"><thead><tr><th>Household reference</th><th>Requested items</th><th class="numeric">Total units</th><th><span class="sr-only">Actions</span></th></tr></thead><tbody>${state.requests.map(r=>`<tr><td class="identity-cell"><strong>${esc(r.label)}</strong></td><td data-label="Requested">${Object.entries(r.lines).map(([id,n])=>{const i=state.items.find(i=>i.id===id);return `<span class="request-line">${esc(i.name)} <span class="muted">· ${fmt(n)} ${esc(i.unit)}${i.date?` · Best before ${esc(i.date)}`:' · Date not set'}</span></span>`}).join('')}</td><td data-label="Total units" class="numeric">${fmt(Object.values(r.lines).reduce((a,b)=>a+b,0))}</td><td class="row-actions">${rowButton(`Edit request for ${r.label}`,'edit-request',r.id,'edit')}${rowButton(`Remove request for ${r.label}`,'delete-request',r.id,'trash')}</td></tr>`).join('')}</tbody></table>`:
     empty('Start with household choices','Add the specific items and quantities a household has asked for.',state.items.length?button('Add first request','add-request','plus'):routeLink('stock',`Add stock first ${icon('arrow')}`,'btn btn-primary'),'requests')}
   </section><p class="page-footnote">${icon('shield')} Use a reference rather than personal details. Volunteers should verify labels, allergens and suitability.</p>`;
 }
@@ -83,20 +84,42 @@ function packing() {
 }
 function history() {
   return heading('Distribution history','A record of what was packed, when and for which household reference.',button('Export CSV','export-history','download','btn-secondary')) +
-    `<section class="panel">${state.history.length?state.history.map(h=>`<details class="history-record"><summary><span>${icon('packing')}<span><strong>${esc(new Date(h.at).toLocaleString())}</strong><small>Distribution recorded</small></span></span><span>${fmt(h.rows.reduce((n,r)=>n+r.amount,0))} units ${icon('chevron')}</span></summary><table class="responsive-table history-table"><thead><tr><th>Household reference</th><th>Item</th><th class="numeric">Quantity</th></tr></thead><tbody>${h.rows.map(r=>`<tr><td class="identity-cell"><strong>${esc(r.label)}</strong></td><td data-label="Item">${esc(r.item)}</td><td class="numeric" data-label="Quantity">${fmt(r.amount)} <span class="muted">${esc(r.unit)}</span></td></tr>`).join('')}</tbody></table></details>`).join(''):empty('No distributions recorded','Your completed packing lists will appear here.',routeLink('packing',`Open packing ${icon('arrow')}`,'btn btn-secondary'),'history')}</section>`;
+    `<section class="panel">${state.history.length?state.history.map(h=>`<details class="history-record" data-history="${esc(h.id)}"><summary id="history-${esc(h.id)}"><span>${icon('packing')}<span><strong>${esc(new Date(h.at).toLocaleString())}</strong><small>Distribution recorded</small></span></span><span>${fmt(h.rows.reduce((n,r)=>n+r.amount,0))} units ${icon('chevron')}</span></summary><div class="history-content"></div></details>`).join(''):empty('No distributions recorded','Your completed packing lists will appear here.',routeLink('packing',`Open packing ${icon('arrow')}`,'btn btn-secondary'),'history')}</section>`;
 }
+function showHistoryRecord(details) {
+  const content = details.querySelector('.history-content');
+  if (!details.open || content.childElementCount) return;
+  const record = state.history.find(h => h.id === details.dataset.history);
+  if (!record) return;
+  content.innerHTML = `<table class="responsive-table history-table"><thead><tr><th>Household reference</th><th>Item</th><th class="numeric">Quantity</th></tr></thead><tbody>${record.rows.map(r=>`<tr><td class="identity-cell"><strong>${esc(r.label)}</strong></td><td data-label="Item">${esc(r.item)}${r.date?`<small>Best before ${esc(r.date)}</small>`:''}</td><td class="numeric" data-label="Quantity">${fmt(r.amount)} <span class="muted">${esc(r.unit)}</span></td></tr>`).join('')}</tbody></table>`;
+}
+document.addEventListener('toggle', event => {
+  if (event.target.matches('details[data-history]')) showHistoryRecord(event.target);
+}, true);
 function settings() {
   return heading('Settings & backup','Keep control of the records on this device.') +
     `<section class="settings-row"><div><h2>Your workspace</h2><p>Local storage and privacy</p></div><div class="panel settings-content"><div class="storage-heading">${icon('database')}<h3>Saved in this browser</h3></div><p>Records stay on this device and do not sync automatically. Use non-identifying household references whenever possible.</p><dl class="record-counts"><div><dt>Stock items</dt><dd>${state.items.length}</dd></div><div><dt>Open requests</dt><dd>${state.requests.length}</dd></div><div><dt>Distributions</dt><dd>${state.history.length}</dd></div></dl></div></section>
-    <section class="settings-row"><div><h2>Backup & restore</h2><p>Take a copy of your records</p></div><div class="panel settings-content"><h3>Download a workspace backup</h3><p>Keep a JSON copy of stock, requests and history before clearing browser data or switching devices. Backup files are readable, so store them securely.</p><div class="button-row">${button('Download backup','backup','download')}${button('Restore backup','restore','upload','btn-secondary')}</div><input id="restore-file" type="file" accept="application/json,.json" hidden></div></section>
+    <section class="settings-row"><div><h2>Backup & restore</h2><p>Take a copy of your records</p></div><div class="panel settings-content"><h3>Download a workspace backup</h3><p>Keep a JSON copy of stock, requests and history before clearing browser data or switching devices. Backup files are readable, so store them securely. This small-pantry workspace supports 1,000 stock items, 1,000 open requests and 1,000 distributions, within a 5 MB backup. Changes beyond these limits are rejected without replacing saved records.</p><div class="button-row">${button('Download backup','backup','download')}${button('Restore backup','restore','upload','btn-secondary')}</div><input id="restore-file" type="file" accept="application/json,.json" hidden></div></section>
     <section class="settings-row"><div><h2>Clear workspace</h2><p>Remove records from this browser</p></div><div class="panel settings-content danger-zone"><h3>Start with an empty workspace</h3><p>All stock, requests and distribution history will be removed. Download a backup first if you need to keep them.</p>${button('Clear workspace','clear','trash','btn-danger')}</div></section>`;
 }
-function render() {
+function render(preserveInteraction = false) {
+  const focused = preserveInteraction ? document.activeElement : null;
+  const focusId = focused?.id;
+  const selection = focused?.tagName === 'INPUT' ? [focused.selectionStart,focused.selectionEnd] : null;
+  const expanded = preserveInteraction ? [...document.querySelectorAll('details[data-history][open]')].map(el=>el.dataset.history) : [];
   renderNavigation();
   $('#app-content').innerHTML = ({overview,stock,requests,packing,history,settings}[currentView])();
   $('#stock-search')?.addEventListener('input',event=>{stockFilters.query=event.target.value;renderStockResults();});
   $('#stock-category')?.addEventListener('change',event=>{stockFilters.category=event.target.value;renderStockResults();});
   $('#stock-sort')?.addEventListener('change',event=>{stockFilters.sort=event.target.value;renderStockResults();});
+  for (const details of document.querySelectorAll('details[data-history]')) {
+    if (expanded.includes(details.dataset.history)) { details.open = true; showHistoryRecord(details); }
+  }
+  const replacement = focusId ? document.getElementById(focusId) : null;
+  if (replacement && replacement !== focused) {
+    replacement.focus({preventScroll:true});
+    if (selection?.[0] != null && typeof replacement.setSelectionRange === 'function') replacement.setSelectionRange(...selection);
+  }
 }
 function renderStockResults() { $('#stock-results').innerHTML=stockResults(); }
 function navigate(view) {
@@ -116,12 +139,16 @@ function openModal(title,description,body,submit='Save changes') {
   $('#modal').showModal(); return $('#modal-form');
 }
 $('#modal').addEventListener('close',()=>{if(lastFocused?.isConnected)lastFocused.focus();else $('#content').focus();});
+$('#modal').addEventListener('cancel',event=>{if($('#modal-form')?.getAttribute('aria-busy')==='true')event.preventDefault();});
 function onSubmit(form, fn) {
   form.addEventListener('submit',async event=>{
-    event.preventDefault(); const submit=form.querySelector('[type=submit]');submit.disabled=true;form.setAttribute('aria-busy','true');
-    try {await fn();$('#modal').close();}
+    event.preventDefault();
+    if(form.getAttribute('aria-busy')==='true')return;
+    const submit=form.querySelector('[type=submit]'),dismiss=[...$('#modal').querySelectorAll('[data-action="close-modal"]')];
+    submit.disabled=true;dismiss.forEach(button=>button.disabled=true);form.setAttribute('aria-busy','true');
+    try {await fn();if($('#modal-form')===form)$('#modal').close();}
     catch(error){form.querySelector('.form-error').textContent=error.message||'Changes could not be saved.';}
-    finally{submit.disabled=false;form.removeAttribute('aria-busy');}
+    finally{submit.disabled=false;dismiss.forEach(button=>button.disabled=false);form.removeAttribute('aria-busy');}
   });
 }
 async function save(fn, expected=state.revision) {
@@ -142,7 +169,7 @@ function requestForm(request) {
   if(!state.items.length){toast('Add stock before creating a household request.');return;}
   const editing=!!request,revision=state.revision; request=request||{label:'',lines:{}};
   const f=openModal(editing?'Edit household request':'Add household request','Choose only the items and quantities the household asks for.',
-    `<div class="form-group"><label for="req-label">Household reference</label><input id="req-label" name="label" type="text" maxlength="80" required autofocus value="${esc(request.label)}" placeholder="e.g. Household 12"><small>Use a reference rather than personal information.</small></div><fieldset class="request-fieldset"><legend>Requested quantities</legend><div class="line-editor">${state.items.map(i=>`<div><label for="r-${esc(i.id)}">${esc(i.name)}<small>${fmt(i.qty)} ${esc(i.unit)} on hand</small></label><input id="r-${esc(i.id)}" data-item="${esc(i.id)}" type="number" min="0" max="10000" step="1" required inputmode="numeric" value="${request.lines[i.id]||0}" aria-label="Requested ${esc(i.name)}"></div>`).join('')}</div></fieldset>`,editing?'Save request':'Add request');
+    `<div class="form-group"><label for="req-label">Household reference</label><input id="req-label" name="label" type="text" maxlength="80" required autofocus value="${esc(request.label)}" placeholder="e.g. Household 12"><small>Use a reference rather than personal information.</small></div><fieldset class="request-fieldset"><legend>Requested quantities</legend><div class="line-editor">${state.items.map(i=>`<div><label for="r-${esc(i.id)}">${esc(i.name)}<small>${fmt(i.qty)} ${esc(i.unit)} on hand · ${i.date?`Best before ${esc(i.date)}`:'Date not set'}</small></label><input id="r-${esc(i.id)}" data-item="${esc(i.id)}" type="number" min="0" max="10000" step="1" required inputmode="numeric" value="${request.lines[i.id]||0}" aria-label="Requested ${esc(batchText(i))}"></div>`).join('')}</div></fieldset>`,editing?'Save request':'Add request');
   onSubmit(f,async()=>{
     const lines=Object.create(null);for(const input of f.querySelectorAll('[data-item]')){const n=Number(input.value);if(!quantity(n))throw Error('Use whole quantities from 0 to 10,000.');if(n)lines[input.dataset.item]=n;}
     await save(s=>putRequest(s,String(new FormData(f).get('label')),lines,editing?request.id:crypto.randomUUID(),editing),revision);
@@ -152,7 +179,7 @@ function requestForm(request) {
 function confirm(title,text,label,fn) { const f=openModal(title,text,'',label);onSubmit(f,fn); }
 function adjustPlan() {
   const p=structuredClone(preview),revision=state.revision;
-  const f=openModal('Adjust packing quantities','Keep the original requests. Change only what you plan to pack.',`<div class="line-editor">${p.rows.map(r=>r.lines.map(l=>`<div><label for="p-${esc(r.id)}-${esc(l.itemId)}">${esc(r.label)} · ${esc(l.name)}<small>Requested: ${fmt(l.requested)} ${esc(l.unit)}</small></label><input id="p-${esc(r.id)}-${esc(l.itemId)}" data-request="${esc(r.id)}" data-item="${esc(l.itemId)}" type="number" min="0" max="${l.requested}" step="1" value="${l.amount}" required inputmode="numeric" aria-label="Pack ${esc(l.name)} for ${esc(r.label)}"></div>`).join('')).join('')}</div><p class="form-hint">The combined packing quantities cannot exceed your stock.</p>`,'Apply adjustments');
+  const f=openModal('Adjust packing quantities','Keep the original requests. Change only what you plan to pack.',`<div class="line-editor">${p.rows.map(r=>r.lines.map(l=>`<div><label for="p-${esc(r.id)}-${esc(l.itemId)}">${esc(r.label)} · ${esc(l.name)}<small>Requested: ${fmt(l.requested)} ${esc(l.unit)} · ${l.date?`Best before ${esc(l.date)}`:'Date not set'}</small></label><input id="p-${esc(r.id)}-${esc(l.itemId)}" data-request="${esc(r.id)}" data-item="${esc(l.itemId)}" type="number" min="0" max="${l.requested}" step="1" value="${l.amount}" required inputmode="numeric" aria-label="Pack ${esc(batchText(l))} for ${esc(r.label)}"></div>`).join('')).join('')}</div><p class="form-hint">The combined packing quantities cannot exceed your stock.</p>`,'Apply adjustments');
   onSubmit(f,async()=>{
     if(state.revision!==revision)throw Error('Stock or requests changed. Close this form and review the latest plan.');
     const overrides=Object.create(null);for(const input of f.querySelectorAll('[data-request]')){overrides[input.dataset.request] ||= Object.create(null);overrides[input.dataset.request][input.dataset.item]=Number(input.value);}
@@ -173,7 +200,7 @@ const actions={
   'reset-plan':()=>{preview=null;adjusted=false;render();toast('Proportional packing plan restored.');},
   'commit-plan':()=>{if(!preview?.totalAllocated)return;const p=structuredClone(preview);confirm('Record this distribution?',`Confirm the physical packing first. This records ${fmt(p.totalAllocated)} units, reduces stock and keeps unfilled requests.`,'Record distribution',async()=>{await save(s=>applyPlan(s,p),p.revision);toast('Distribution recorded.');});},
   'print-plan':()=>window.print(),
-  'backup':()=>{download('gathershelf-backup.json',JSON.stringify(state,null,2),'application/json');toast('Workspace backup downloaded.');},
+  'backup':()=>{download('gathershelf-backup.json',serializeBackup(state),'application/json');toast('Workspace backup downloaded.');},
   'restore':()=>$('#restore-file').click(),
   'clear':()=>{const revision=state.revision;confirm('Clear this workspace?','All stock, requests and distribution history on this browser will be removed. Download a backup first.','Clear workspace',async()=>{await save(s=>({...blankState(),revision:s.revision}),revision);toast('Workspace cleared.');});},
   'export-stock':()=>{download('gathershelf-stock.csv',stockCSV(state.items),'text/csv;charset=utf-8');toast('Stock CSV downloaded.');},
@@ -195,7 +222,7 @@ document.addEventListener('change',async event=>{
   if(event.target.id!=='restore-file'||!event.target.files[0])return;
   const file=event.target.files[0];event.target.value='';
   try{
-    if(file.size>5_000_000)throw Error('The backup limit is 5 MB.');
+    if(file.size>MAX_BACKUP_BYTES)throw Error('The backup limit is 5 MB.');
     const imported=readBackup(await file.text()),revision=state.revision;
     confirm('Replace workspace with backup?',`Restore ${imported.items.length} stock items, ${imported.requests.length} requests and ${imported.history.length} ${imported.history.length===1?'distribution':'distributions'}. This replaces the current workspace.`,'Restore backup',async()=>{await save(s=>({...imported,revision:s.revision}),revision);toast('Workspace backup restored.');});
   }catch(error){toast(error.message);}
