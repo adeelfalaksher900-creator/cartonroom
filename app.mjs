@@ -197,7 +197,7 @@ document.addEventListener('change',async event=>{
   try{
     if(file.size>5_000_000)throw Error('The backup limit is 5 MB.');
     const imported=readBackup(await file.text()),revision=state.revision;
-    confirm('Replace workspace with backup?',`Restore ${imported.items.length} stock items, ${imported.requests.length} requests and ${imported.history.length} distributions. This replaces the current workspace.`,'Restore backup',async()=>{await save(s=>({...imported,revision:s.revision}),revision);toast('Workspace backup restored.');});
+    confirm('Replace workspace with backup?',`Restore ${imported.items.length} stock items, ${imported.requests.length} requests and ${imported.history.length} ${imported.history.length===1?'distribution':'distributions'}. This replaces the current workspace.`,'Restore backup',async()=>{await save(s=>({...imported,revision:s.revision}),revision);toast('Workspace backup restored.');});
   }catch(error){toast(error.message);}
 });
 async function initialise(){
