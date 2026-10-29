@@ -19,7 +19,7 @@ All copy, the GatherShelf mark and product behavior are specific to GatherShelf.
 - Colors: saturated blue for actions and allocation quantities; dark neutral marketing panel; white operational surfaces; amber only for shortages.
 - Typography: one system sans family, two-line hero, compact application titles and tabular quantities.
 - Icons: locally bundled Lucide SVG symbols obtained through Supericons. No Unicode pictograms in navigation or action buttons.
-- Motion: small hero entrances, transform feedback on actions, one-time section reveals and native progress updates. Operational text and notifications stay fully opaque. Reduced-motion preference disables motion.
+- Motion: small hero entrances, transform feedback on actions, one-time section reveals and native progress updates. Operational text and notifications stay fully opaque. Reduced-motion preference disables motion. Entrance transforms are released after animation; the public header has an explicit stacking level so its mobile menu stays above the hero. The mobile menu closes on link selection.
 - Mobile: five primary navigation destinations with a More dialog; stock and packing tables become labeled rows; native forms retain at least 44px controls.
 
 ## Verification

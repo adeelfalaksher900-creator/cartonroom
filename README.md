@@ -32,7 +32,7 @@ flowchart TD
   DB --> Backup["JSON backup and CSV history"]
 ```
 
-There is no server-side database, authentication, analytics, external API, or cross-device sync. All workspace records reside in the browser's IndexedDB. A revision check and transactional write prevent stale plans or concurrent tabs from silently overwriting newer state. Backups contain all data in plaintext, so they should be stored securely. Clearing browser storage removes the workspace; export regular backups. This is designed for a single device, not simultaneous multi-user operations.
+There is no server-side database, authentication, analytics, external API, or cross-device sync. All workspace records reside in the browser's IndexedDB. A revision check and transactional write prevent stale plans or concurrent tabs from silently overwriting newer state. Background updates preserve stock-search focus and expanded history records. Backups contain all data in plaintext, so they should be stored securely. Clearing browser storage removes the workspace; export regular backups. Saves are bounded to a restorable 5 MB compact JSON backup, with up to 1,000 stock items, 1,000 open requests and 1,000 distributions. Capacity errors preserve the previous saved records. This is designed for a single device, not simultaneous multi-user operations.
 
 ## Getting started
 
@@ -50,11 +50,11 @@ Open `http://localhost:8000`. HTTPS is needed for `crypto.randomUUID()` on non-l
 npm test
 ```
 
-The 14 automated tests cover allocation, conservation of stock, stale and modified plans, incomplete demand, combined filtering and sorting, validation, backup round trips, and CSV formula injection. Automated tests do not establish pantry outcomes or replace usability, accessibility, and security testing with real users.
+The 20 automated tests cover allocation, conservation of stock, stale and modified plans, incomplete demand, combined filtering and sorting, validation, UTF-8 backup capacity, batch-date traceability, backup round trips, storage error/retry recovery, aborted reads and CSV formula injection. Automated tests do not establish pantry outcomes or replace usability, accessibility, and security testing with real users.
 
 ## Research and limitations
 
-See [product and research notes](docs/PRODUCT.md), [verification notes](docs/TESTING.md), [interface reference map](docs/DESIGN.md), and the [draft project story](docs/DEVPOST-DRAFT.md). The plan is an item-quantity allocator, not a dietary needs engine. It does not validate food safety, expiry, allergies, cultural preferences, eligibility, or stock accuracy. It depends on volunteers accurately entering stock and requested quantities. No field study has yet established user benefit.
+See [product and research notes](docs/PRODUCT.md), [verification notes](docs/TESTING.md), [submission checklist](docs/SUBMISSION-CHECKLIST.md), [interface reference map](docs/DESIGN.md), and the [draft project story](docs/DEVPOST-DRAFT.md). The plan is an item-quantity allocator, not a dietary needs engine. It does not validate food safety, expiry, allergies, cultural preferences, eligibility, or stock accuracy. It depends on volunteers accurately entering stock and requested quantities. No field study has yet established user benefit.
 
 ## License
 

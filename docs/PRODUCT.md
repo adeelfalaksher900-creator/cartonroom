@@ -5,7 +5,7 @@
 Small food pantry volunteers who assemble bags based on the things households choose. A U.S. study found inventory management among the software features pantry staff wanted. The Regional Food Bank's client-choice manual describes an inventory-list model in which clients choose and volunteers pack. These establish a plausible need; they do not validate this particular product.
 
 Sources:
-- https://pmc.ncbi.nlm.nih.gov/articles/PMC11810111/
+- https://pubmed.ncbi.nlm.nih.gov/39931051/ (the primary study abstract; full text: https://pmc.ncbi.nlm.nih.gov/articles/PMC11810111/)
 - https://regionalfoodbank.net/wp-content/uploads/Client-Choice-Manual.pdf
 - Existing products: https://dignifeed.com/product and https://www.openpantry.food/ — they already address related pantry management and allocation problems. We do not claim the concept is unprecedented.
 
@@ -31,7 +31,7 @@ Original interface design uses clear navigation, generous spacing, high-contrast
 
 ## Implementation
 
-Browser modules and semantic HTML; IndexedDB transactional storage, revision checks and BroadcastChannel refresh between tabs; whole-unit largest-remainder allocation by requested item; strict input and backup validation; escaped display text; CSV formula neutralization; content security policy and no external integrations.
+Browser modules and semantic HTML; IndexedDB transactional storage, revision checks and BroadcastChannel refresh between tabs; whole-unit largest-remainder allocation by requested item; strict input and backup validation; escaped display text; CSV formula neutralization; compact restorable backups with a 5 MB write budget; batch dates preserved in history; history tables rendered when opened; content security policy and no external integrations.
 
 ### Allocation caveats
 
@@ -46,4 +46,20 @@ A proportion of requested quantities is not a measure of nutritional value, need
 
 ## Delivery constraints
 
-Single-device storage only. No synchronization, permissions, support for simultaneous offline devices, inventory reconciliation with physical shelves, dietary decision system, labeling verification, or real-world study. Passwords, accounts, analytics and third-party feeds are not part of the product.
+Single-device storage only. Workspace capacity is 1,000 stock items, 1,000 open requests and 1,000 distributions, with a 5 MB compact JSON ceiling; capacity violations abort the write instead of discarding older history. No synchronization, permissions, support for simultaneous offline devices, inventory reconciliation with physical shelves, dietary decision system, labeling verification, or real-world study. Passwords, accounts, analytics and third-party feeds are not part of the product.
+
+## State and storage contract
+
+IndexedDB database `gathershelf-workspace-v1` contains object store `workspace`, with the complete workspace under key `primary`.
+
+| Field | Contract |
+| --- | --- |
+| `version` | Schema version 1. |
+| `revision` | Non-negative safe integer, advanced by exactly one committed write. |
+| `items` | Unique ID, name, unit, category, whole quantity 0–10,000, optional valid calendar date. |
+| `requests` | Unique ID, household reference and item-ID to positive whole-quantity mapping. Every line refers to existing stock. |
+| `history` | Unique distribution ID, timestamp and packed rows with reference, item, unit, amount and optional batch date. Older backups without history dates remain valid. |
+
+The allocation contract is `plan(state)`, followed by optional `customizePlan(state, overrides)` and `applyPlan(state, plan)`. No server API or environmental secret is required. `updateState(expectedRevision, change)` reads and writes inside one read/write transaction, checks the revision, validates the result and its serialized byte size, then commits. BroadcastChannel is a refresh notification rather than a substitute for transactional checks.
+
+A rejected write keeps saved records intact. Backup restore validates its payload and requires confirmation before replacing records. Uncommitted adjustments are held only in the current page and are lost on refresh. Background updates invalidate those adjustments and tell the volunteer to review current stock.
