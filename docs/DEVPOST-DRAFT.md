@@ -1,39 +1,81 @@
-# Cartonroom
+# GatherShelf
 
-Tagline: Find the right fit for the things you ship.
+## Field map
+
+| Devpost field | Prepared value |
+| --- | --- |
+| Project name | GatherShelf |
+| Tagline | Turn pantry stock and household choices into a clear, reviewable packing plan. |
+| Try it out | https://gathershelf.vercel.app/ |
+| Source code | https://github.com/adeelfalaksher900-creator/cartonroom/tree/gathershelf-rebuild |
+| Built with | JavaScript, HTML, CSS, IndexedDB, Lucide, Node.js, Vercel |
+| Thumbnail | Prepared separately: 1536 × 1024 PNG, 3:2. Not uploaded yet. |
+| Video and gallery | Reserved for the team's later review and authorization. |
+
+**Preparation status:** This file is the prepared copy. A signed-in Devpost session is required to save it to an actual Devpost draft. No Devpost upload or final submission is claimed.
 
 ## Inspiration
 
-For a small shop, packing often starts with the boxes already on a shelf. A seller has to choose one, make the products fit, and leave room for protection. Guessing can mean repacking or using a larger carton than necessary. We wanted a practical way to make that decision before the tape comes out.
+A household chooses four bags of rice. Another household chooses four. The pantry has five. A spreadsheet can hold those numbers, but volunteers still need a clear way to decide what to pack, preserve the original choices and remember what remains unfilled.
+
+That practical gap is the focus of GatherShelf. A nationwide survey of food pantries identified inventory management among the digital features pantry staff wanted. Client-choice guidance also describes an inventory-list approach in which households choose items and volunteers pack them. These sources support the problem; they do not establish results for GatherShelf.
 
 ## What it does
 
-Cartonroom lets a seller enter products, quantities, dimensions, weights, upright restrictions and the inside sizes and content-weight limits of their available boxes. It produces a packing plan with a numbered isometric layout, a list of item positions, and a clear list of any items the planner could not place. Users can change measurement units, add padding, print a plan, and export or import a workspace backup.
+GatherShelf gives a small pantry one workspace for stock, household requests, packing and distribution history. A volunteer can:
 
-The example order is optional. Workspaces stay in the browser; they are not uploaded to an application server.
+- Record available quantities, counting units, categories and best-before dates.
+- Find stock with combined search, category and availability filters.
+- Enter the specific items a household requests using a non-identifying reference.
+- Review a whole-unit packing plan and its shortages, then adjust proposed amounts without rewriting requests.
+- Confirm a distribution so stock and outstanding requests update together.
+- Reopen the recorded distribution, print a packing list, export CSV reports and download or restore a JSON backup.
+
+Different batches retain their dates in request labels, packing controls and newly recorded history. Unfilled quantities stay open for the next distribution.
+
+## How it works
+
+For each item, the planner uses largest-remainder proportional allocation. Five units against two equal four-unit requests produce allocations of three and two; stable request IDs resolve the tie. The result is a transparent starting rule. Volunteers review it and retain the final decision.
+
+The flow is **stock → household choices → review and adjust → confirm → history**. Recording is one IndexedDB transaction: the application checks the workspace revision, validates the plan against current stock and demand, then updates stock, outstanding requests and history together. An old confirmation is rejected if another tab has changed the workspace.
 
 ## How we built it
 
-The frontend is HTML, CSS and JavaScript. The geometry engine treats products as padded rectangular envelopes. It tests orientations and candidate positions, rejecting placements that exceed a box's boundaries, overlap another envelope, lack full envelope support, or exceed the maximum content weight. Several deterministic item orders are tried for each box. The planner prefers a smaller box that holds all remaining items, or otherwise one that holds the most. It repeats until it places the order or no remaining item fits the available boxes.
+The frontend uses semantic HTML, CSS and JavaScript modules. Business rules, input validation and persistence are separate modules, with no third-party runtime scripts or external API calls. Vercel serves the application over HTTPS. Records remain in this browser; no account is needed.
 
-The visual and placement list use the engine's same coordinates. User inputs and imported files are validated. The Vercel deployment serves a static application with a restrictive content security policy; there are no application credentials or third-party runtime dependencies.
+The workspace has bounded, restorable backups, CSV formula neutralization, escaped display values and a restrictive content security policy. Background tab updates preserve stock-search focus and expanded history. Distribution detail tables are created when opened rather than rendering every historical row on startup.
 
-## Challenges and lessons
+The [repository README](https://github.com/adeelfalaksher900-creator/cartonroom/blob/gathershelf-rebuild/README.md) includes setup instructions and an architecture diagram. The [verification report](https://github.com/adeelfalaksher900-creator/cartonroom/blob/gathershelf-rebuild/docs/TESTING.md) records the checks and their limits.
 
-It was important to distinguish a valid arrangement from the assumption that an item fits because its volume is small enough. An item must also fit in each dimension, respect its allowed orientations, avoid overlap, and rest on supported surfaces. Converting between centimeters and inches also needed enough precision to avoid losing small values when editing.
+## Challenges we ran into
 
-Packing plans are only as useful as the measurements and real handling rules supplied by a seller. The solver checks support for padded envelopes rather than the physical product inside the padding. It does not model fragility, compression, box tare, load distribution, shipping tariffs or guaranteed optimum solutions. Users need to verify their physical pack.
+The hardest engineering problem was keeping stock and requests consistent when two tabs were open. A plan that looked valid when a confirmation opened could be stale a moment later. Revision checks inside the write transaction prevent the old plan from silently replacing newer records.
 
-## What we accomplished
+We also needed to preserve the distinction between what a household asked for and what a volunteer packed. Manual adjustments change the plan while the original request remains intact until a distribution is recorded. Backup size and write capacity use the same byte budget so an ordinary app-generated backup remains importable.
 
-The live workflow allows users to enter a real order and box set, create a plan, edit their data, refresh the page, and export and restore a backup. The geometry test suite covers exact fits, permitted rotations, protective padding, weight limits, split orders, unsupported placement, invalid inputs and 60 deterministic generated scenarios. User time or cost savings have not been measured.
+## Accomplishments
 
-## What’s next
+Twenty automated tests pass, including 1,000 generated allocation scenarios. They cover stock conservation, original request bounds, stale plans, malformed backups, UTF-8 capacity, batch dates, CSV export, storage retry recovery and aborted reads.
 
-Test the workflow with small sellers and refine the packing rules based on their actual packaging materials. Explore stock quantities, stable stacking rules and shared workspaces only after validating their needs. Add carrier-specific rates only with reliable integrations and clear coverage.
+Browser testing exercised desktop and 390px mobile workflows. One desktop check recorded seven units from two dated stock batches, exported four matching history rows and restored the actual downloaded backup. A mobile workflow recorded three units and reopened its history through the More menu. These are functional checks using synthetic records, not evidence of field outcomes.
 
-Built with: JavaScript, HTML, CSS, SVG, Vercel.
+## What we learned
 
-Live website: https://cartonroom.vercel.app/
+Small operational details matter: a clear batch date, a useful shortage message, a safe retry, a retained search cursor and a backup that can actually be restored. Local storage keeps setup light, but its one-device boundary must stay clear. Mathematical consistency is useful; it cannot decide a household's needs.
 
-Submission note: screenshots and the demo video are intentionally pending the owner's review. The overview says 1–3 minutes, while the rules say 2–5 minutes; target 2–3 minutes to satisfy both. The overview and rules differ on student eligibility; seek organizer clarification before submission.
+## What's next
+
+Test the workflow with pantry workers and households, compare task completion and errors against their current method, evaluate assistive-technology use, and investigate carefully controlled multi-user synchronization. These are future steps, not completed studies.
+
+## Operating boundaries
+
+GatherShelf is a single-device pantry workspace. It does not automatically synchronize devices or assess nutrition, food safety, allergies or eligibility. Volunteers must verify product labels, dates, quantities and suitability and apply their pantry's policies. No measured time saving, health outcome, security certification or guaranteed winning score is claimed.
+
+## Research
+
+- [Current Use and Demand for Digital Tools to Enhance Food Pantry Management](https://pubmed.ncbi.nlm.nih.gov/39931051/)
+- [Regional Food Bank client-choice manual](https://regionalfoodbank.net/wp-content/uploads/Client-Choice-Manual.pdf)
+
+## Team fields
+
+Use the existing registered team and only confirmed contributions. Adeel Falak Sher provided project direction and review requests. No unconfirmed development role or teammate contribution should be invented. Answer any required assistance-disclosure fields accurately.

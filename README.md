@@ -1,81 +1,61 @@
-# Cartonroom
+# GatherShelf
 
-A practical packing planner for small shops. Enter an order and the boxes you have, then see a geometrically feasible packing plan before you start packing.
+A practical workspace for community food pantries to record stock, capture household choices, and review packing plans when supplies are limited.
 
-Live application: https://cartonroom.vercel.app/
+[Open GatherShelf](https://gathershelf.vercel.app/) · [Workspace guide](https://gathershelf.vercel.app/guide)
 
-## Why it exists
+![GatherShelf homepage](docs/qa/homepage.jpg)
 
-Packing an order by eye takes trial and error. A larger carton can use more material and add to dimensional-weight charges. Cartonroom helps a seller compare their actual box sizes and see where each item envelope goes. It is designed for a single packing station and keeps workspace data in the browser.
+## The problem
 
-Carton-sizing tools already exist, including [Packwire](https://packwire.com/box-size-optimizer) and [Fits In The Box](https://fitsinthebox.com/faq/). Cartonroom's focus is an accessible, no-account workflow with user-defined boxes, a visible layout, and portable local data. We have not yet measured time or cost savings with real sellers.
+Pantry volunteers often work from a changing list of donations and have to match that stock to what people actually ask for. A client-choice approach can allow people to select items from an inventory list while volunteers prepare the bags. GatherShelf supports that workflow on a single device without requiring a sign-in.
 
-## Workflow
+## What you can do
 
-1. Add products with packaged dimensions, quantity, content weight and optional upright orientation.
-2. Add available carton inner dimensions and maximum content weight.
-3. Set protective padding per item side and select measurement units.
-4. Generate a plan. Review the arrangement and the item placement list, including any unplaced items.
-5. Print the plan or export a JSON workspace for backup and reuse.
+- Add and edit stock in whole units, optionally recording a best-before date.
+- Combine stock search, category and availability filters; sort by name, quantity or date and export stock as CSV.
+- Create requests with a household reference and the exact quantities requested.
+- Review a packing plan, including shortages, and adjust quantities without changing household requests before recording anything.
+- Record a distribution atomically: stock decreases and unfilled requests remain open.
+- Inspect history, print the plan, export a CSV or back up and restore the workspace as JSON.
 
-The example workspace is explicitly marked and optional. Cartonroom does not transmit product data to an external API. Browser storage is local to the device and browser profile. Export a backup if it matters.
+When stock is limited, the planner uses largest-remainder proportional allocation separately for each item. It never adds an item that was not requested. This is a reproducible starting point, not a claim that the result is universally fair. Ties are resolved by stable request IDs. Staff remain responsible for the final decision and should check labels, allergens, dates, and local policy. It is not nutrition, food safety, or eligibility advice.
 
-## How it works
+## Architecture
 
 ```mermaid
 flowchart TD
-  A[Product envelopes and box sizes] --> B[Validate and convert to cm and kg]
-  B --> C[Expand items by padding]
-  C --> D[Search positions and allowed rotations]
-  D --> E[Check bounds, overlap, support and weight]
-  E --> F[Compare feasible box candidates]
-  F --> G[Show parcels and unplaced items]
-  G --> H[Print or export locally]
+  UI["Stock and household requests"] --> DB["IndexedDB on this device"]
+  DB --> Engine["Proportional allocation engine"]
+  Engine --> Review["Review shortages and packing"]
+  Review -->|"Confirm current plan"| DB
+  DB --> Backup["JSON backup and CSV history"]
 ```
 
-The engine uses a bounded, deterministic greedy heuristic and several item orderings. It chooses the smallest-volume candidate box that holds all remaining items when one is found. Otherwise it favors the candidate that places the most items and breaks ties by box volume. The 3D diagram and coordinates come from the same placement data.
+There is no server-side database, authentication, analytics, external API, or cross-device sync. All workspace records reside in the browser's IndexedDB. A revision check and transactional write prevent stale plans or concurrent tabs from silently overwriting newer state. Background updates preserve stock-search focus and expanded history records. Backups contain all data in plaintext, so they should be stored securely. Clearing browser storage removes the workspace; export regular backups. Saves are bounded to a restorable 5 MB compact JSON backup, with up to 1,000 stock items, 1,000 open requests and 1,000 distributions. Capacity errors preserve the previous saved records. This is designed for a single device, not simultaneous multi-user operations.
 
-### Limits that matter
+## Getting started
 
-- This is a heuristic, not a proof of the globally optimal packing. A workable arrangement might exist even if this search does not find it.
-- All shapes are rectangular padded envelopes. The support check applies to those envelopes, not the real products inside padding. It does not model fragility, compression, box tare, shifting, labels or load distribution.
-- The weight limit is for contents only. Box quantities are assumed unlimited. Enter real usable internal dimensions and appropriate protection, then verify the physical pack before shipping.
-- The tool does not connect to couriers or calculate carrier rates, emissions or guaranteed savings.
-- Workspace data lives in browser storage. It is not a shared multi-user service and can be lost when browser data is cleared. Export backups.
-- Limits: 30 total items, 12 box sizes, 1,000 cm per dimension and 25 cm padding per side.
-
-## Run locally
-
-Node.js 20+ is needed for the test runner. The website itself has no package dependencies or build step. Serve the directory with a local HTTP server, for example:
+Node.js 20 or newer is needed only for the tests. Run a static server from the project directory:
 
 ```sh
 python3 -m http.server 8000
 ```
 
-Open `http://localhost:8000`. A web server is needed for ES modules. Run the tests with:
+Open `http://localhost:8000`. HTTPS is needed for `crypto.randomUUID()` on non-localhost deployments. There are no environment variables, account credentials, or dependencies. Browser storage must be enabled.
+
+## Tests
 
 ```sh
 npm test
 ```
 
-The tests cover exact fits, rotation, padding, weight, split orders, no-fit cases, support, non-overlap, invalid input and deterministic geometry scenarios. They do not replace real user testing or a carrier's packing requirements.
+The 20 automated tests cover allocation, conservation of stock, stale and modified plans, incomplete demand, combined filtering and sorting, validation, UTF-8 backup capacity, batch-date traceability, backup round trips, storage error/retry recovery, aborted reads and CSV formula injection. Automated tests do not establish pantry outcomes or replace usability, accessibility, and security testing with real users.
 
-## Project structure
+## Research and limitations
 
-| Path | Purpose |
-| --- | --- |
-| `index.html`, `style.css`, `app.js` | Accessible user interface and local workspace |
-| `packing.js` | Pure geometry and box selection engine |
-| `tests/packing.test.js` | Node test suite for the packing engine |
-| `docs/PLAN.md` | Research, scope, acceptance criteria and technical decisions |
-| `vercel.json` | Static security response headers |
-
-Deploy these files as a static website on Vercel or another static host. Preserve the response security headers if deploying elsewhere. No environment variables, secrets, database or API credentials are needed.
-
-## Research
-
-The packing approach was informed by research into variable-sized 3D packing for e-commerce: [Optimizing e-commerce warehousing through open dimension management](https://pmc.ncbi.nlm.nih.gov/articles/PMC10588690/). Existing food-rescue allocation and caregiver-transition concepts were considered before selecting the current product; see `docs/PLAN.md` for reasoning. User outcomes and cost savings have not been validated.
+See [product and research notes](docs/PRODUCT.md), [verification notes](docs/TESTING.md), [submission checklist](docs/SUBMISSION-CHECKLIST.md), [interface reference map](docs/DESIGN.md), and the [draft project story](docs/DEVPOST-DRAFT.md). The plan is an item-quantity allocator, not a dietary needs engine. It does not validate food safety, expiry, allergies, cultural preferences, eligibility, or stock accuracy. It depends on volunteers accurately entering stock and requested quantities. No field study has yet established user benefit.
 
 ## License
 
-MIT. See [LICENSE](LICENSE).
+MIT. See [LICENSE](LICENSE). Lucide icon notices are in [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md).
