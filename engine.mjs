@@ -7,12 +7,12 @@ export function quantity(n, allowZero = true) {
 }
 export function cleanText(s, max = 80) { return typeof s === 'string' ? s.trim().slice(0, max) : ''; }
 const validId = s => typeof s === 'string' && /^[A-Za-z0-9_-]{1,100}$/.test(s) && !['__proto__','constructor','prototype'].includes(s);
-const validDate = d => d === '' || (/^\d{4}-\d{2}-\d{2}$/.test(d) && !Number.isNaN(Date.parse(d)) && new Date(d).toISOString().slice(0,10) === d);
+const validDate = d => typeof d === 'string' && (d === '' || (/^\d{4}-\d{2}-\d{2}$/.test(d) && !Number.isNaN(Date.parse(d)) && new Date(d).toISOString().slice(0,10) === d));
 export function validateState(s) {
   if (!s || s.version !== 1 || !Number.isSafeInteger(s.revision) || s.revision < 0 || !Array.isArray(s.items) || !Array.isArray(s.requests) || !Array.isArray(s.history) || s.items.length > 1000 || s.requests.length > 1000 || s.history.length > 1000) throw Error('This backup is not a valid GatherShelf file.');
   const items = new Set(), requests = new Set();
   for (const i of s.items) {
-    if (!i || !validId(i.id) || items.has(i.id) || !cleanText(i.name) || i.name.length > 80 || !cleanText(i.unit, 20) || i.unit.length > 20 || !quantity(i.qty) || typeof i.category !== 'string' || i.category.length > 40 || !validDate(i.date || '')) throw Error('A stock item in this backup is invalid.');
+    if (!i || !validId(i.id) || items.has(i.id) || !cleanText(i.name) || i.name.length > 80 || !cleanText(i.unit, 20) || i.unit.length > 20 || !quantity(i.qty) || typeof i.category !== 'string' || !i.category.trim() || i.category.length > 40 || !validDate(i.date ?? '')) throw Error('A stock item in this backup is invalid.');
     items.add(i.id);
   }
   for (const r of s.requests) {
@@ -22,7 +22,7 @@ export function validateState(s) {
   }
   // History is display-only. Validate shape, bound text and amounts, and reject markup-sized payloads.
   for (const h of s.history) {
-    if (!h || !validId(h.id) || typeof h.at !== 'string' || h.at.length > 40 || !Array.isArray(h.rows) || h.rows.length > 10000) throw Error('The distribution history is invalid.');
+    if (!h || !validId(h.id) || typeof h.at !== 'string' || h.at.length > 40 || Number.isNaN(Date.parse(h.at)) || !Array.isArray(h.rows) || h.rows.length > 10000) throw Error('The distribution history is invalid.');
     for (const row of h.rows) if (!row || typeof row.label !== 'string' || row.label.length > 80 || typeof row.item !== 'string' || row.item.length > 80 || typeof row.unit !== 'string' || row.unit.length > 20 || !quantity(row.amount, false)) throw Error('A distribution history row is invalid.');
   }
   return s;

@@ -12,7 +12,7 @@ GatherShelf is a single-device workspace for recording stock, adding household r
 
 ## How we built it
 
-The application uses semantic HTML, CSS, JavaScript modules and IndexedDB. An integer largest-remainder algorithm shares scarce units in proportion to requests for each item, with stable tie handling. The current stock and requests are checked again inside a transactional write before a distribution is recorded. Tests exercise conservation, stale-plan rejection and validation.
+The application uses semantic HTML, CSS, JavaScript modules and IndexedDB. Search, availability and category filters work together; stock and distribution history can be exported as CSV. An integer largest-remainder algorithm shares scarce units in proportion to requests for each item, with stable tie handling. The current stock and requests are checked again inside a transactional write before a distribution is recorded. Fourteen unit tests cover conservation, stale-plan rejection, filtering, export and validation. Browser checks exercise desktop and mobile distribution workflows, export and restore; the test results are documented in the repository.
 
 ## Challenges
 
