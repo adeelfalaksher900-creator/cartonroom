@@ -43,7 +43,7 @@ export function plan(state) {
     const available = Math.min(item.qty, total);
     const shares = asks.map(a => ({...a, amount:Math.floor(available * a.qty / total), remainder:(available * a.qty) % total}));
     let left = available - shares.reduce((s,a) => s+a.amount, 0);
-    shares.sort((a,b) => b.remainder - a.remainder || a.id.localeCompare(b.id));
+    shares.sort((a,b) => b.remainder - a.remainder || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
     for (const share of shares) if (left > 0 && share.amount < share.qty) { share.amount++; left--; }
     for (const s of shares) {
       const r=byRequest.get(s.id); r.lines.push({itemId:item.id, name:item.name, unit:item.unit, date:item.date, requested:s.qty, amount:s.amount}); r.requested+=s.qty; r.allocated+=s.amount;
