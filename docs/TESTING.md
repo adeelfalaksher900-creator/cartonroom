@@ -4,6 +4,21 @@
 
 **20 tests pass; 0 fail.** GitHub Actions also checks the syntax of every runtime JavaScript module. The verified test commit is `a0679ddfe630edab1654835fb4eef6d694206aaf`; its [pull-request run](https://github.com/adeelfalaksher900-creator/gathershelf/actions/runs/40906109571) passed. Runtime files match the Vercel production release; subsequent documentation edits do not change application behavior. PR #1 was merged with the user's authorization at `9986c260fa7fd24397ea15d9f325936be7693eb8`; the repository is now named `gathershelf`, and main remains protected.
 
+## Recorded workflow verification — 29 October 2026
+
+A fresh synthetic browser workspace was exercised through real interface actions:
+
+- Rice 5 bags, beans 4 cans and oats 0 packs; two requests totalling 13 units.
+- The proportional plan allocated 9 units and exposed rice and oats shortages.
+- An attempted 8-bag rice allocation was rejected against stock of 5. A valid 8-unit custom plan was applied, then reset to 9.
+- While confirmation was open, a second tab saved a stock category change. The old confirmation returned: “This workspace changed in another tab. Close this form and review the latest information.” After reload and review, the current 9-unit plan was recorded successfully.
+- The actual downloaded history CSV contained 4 positive packing lines totalling 9 units, with batch dates. The actual JSON backup contained 3 items, 2 open requests, 1 distribution, 0 stock units and 4 requested units remaining.
+- That downloaded file was selected through the restore control, confirmed, and produced the “Workspace backup restored.” success message. Reopened records retained the expected counts.
+
+Eight continuous browser capture takes preserved 3,803 sampled frames. The walkthrough export is 1920 × 1080 at 30 fps, approximately 2:31. The source viewport was 1348 × 926 and is fitted within the output canvas. All gallery images show the actual application using synthetic, non-identifying records.
+
+The Devpost draft's 15 uploaded image previews were matched byte-for-byte to the source captures before captions were entered. The saved project preview shows 15 gallery positions, the project story, seven technology tags, the live application and the renamed repository link. No final submission or YouTube upload was performed.
+
 Coverage includes integer allocation and conservation across 1,000 generated stock/demand combinations, request bounds, shortages, outstanding demand, stale/tampered plans, manual adjustments, combined filtering and sorting, edit/delete guards, invalid dates and IDs, duplicate history IDs, UTF-8 backup capacity, batch dates, export, backup round trips and CSV formula neutralization. Storage regressions verify that two failed opens do not poison a third attempt and that an aborted read rejects instead of loading forever.
 
 ## Browser feature matrix

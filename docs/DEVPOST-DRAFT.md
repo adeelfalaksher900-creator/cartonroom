@@ -1,81 +1,74 @@
-# GatherShelf
+# GatherShelf — saved Devpost draft
 
-## Field map
+**Status:** Saved on Devpost, not submitted. The project preview is https://devpost.com/software/gathershelf. The saved overview contains the 3:2 thumbnail. The details contain the story below, seven technology tags, the live application, renamed GitHub repository, and 15 images with matching captions. The YouTube field awaits the user's link.
 
-| Devpost field | Prepared value |
+| Field | Saved value |
 | --- | --- |
-| Project name | GatherShelf |
-| Tagline | Turn pantry stock and household choices into a clear, reviewable packing plan. |
-| Try it out | https://gathershelf.vercel.app/ |
-| Source code | https://github.com/adeelfalaksher900-creator/gathershelf |
-| Built with | JavaScript, HTML, CSS, IndexedDB, Lucide, Node.js, Vercel |
-| Thumbnail | Prepared separately: 1536 × 1024 PNG, 3:2. Not uploaded yet. |
-| Video and gallery | Production authorized by the user; upload status is tracked separately. The user will upload the video to YouTube. |
-
-**Preparation status:** This file is the prepared copy. A signed-in Devpost session is required to save it to an actual Devpost draft. No Devpost upload or final submission is claimed.
+| Name | GatherShelf |
+| Pitch | Turn pantry stock and household choices into a clear, reviewable packing plan. |
+| Live application | https://gathershelf.vercel.app/ |
+| Source | https://github.com/adeelfalaksher900-creator/gathershelf |
+| Built with | javascript, html5, css3, indexeddb, node.js, vercel, lucide |
+| Video | A 2:31, 1920 × 1080 walkthrough is prepared for the user's YouTube upload. |
+| Gallery | 15 authentic, captioned application images. |
 
 ## Inspiration
 
-A household chooses four bags of rice. Another household chooses four. The pantry has five. A spreadsheet can hold those numbers, but volunteers still need a clear way to decide what to pack, preserve the original choices and remember what remains unfilled.
+Two households each ask for four bags of rice. The pantry has five. Recording those numbers is only the beginning: a volunteer needs a clear packing decision, a way to preserve the original choices, and a record of what remains unfilled.
 
-That practical gap is the focus of GatherShelf. A nationwide survey of food pantries identified inventory management among the digital features pantry staff wanted. Client-choice guidance also describes an inventory-list approach in which households choose items and volunteers pack them. These sources support the problem; they do not establish results for GatherShelf.
+GatherShelf supports that practical client-choice workflow for small community food pantries, with no account or server setup. Inventory tools already exist; our focus is the handoff from household choices to a reviewable, quantity-safe packing plan on one device.
 
 ## What it does
 
-GatherShelf gives a small pantry one workspace for stock, household requests, packing and distribution history. A volunteer can:
+- Tracks stock quantities, counting units, categories and optional best-before dates.
+- Combines search, category and availability filters, with sorting and CSV export.
+- Records the exact items and quantities requested using non-identifying household references.
+- Calculates whole-unit proportional allocations and makes shortages explicit.
+- Lets a volunteer adjust the plan within stock and original-request bounds.
+- Records a distribution, preserves unfilled requests, and provides history, printing, CSV and full JSON backup/restore.
 
-- Record available quantities, counting units, categories and best-before dates.
-- Find stock with combined search, category and availability filters.
-- Enter the specific items a household requests using a non-identifying reference.
-- Review a whole-unit packing plan and its shortages, then adjust proposed amounts without rewriting requests.
-- Confirm a distribution so stock and outstanding requests update together.
-- Reopen the recorded distribution, print a packing list, export CSV reports and download or restore a JSON backup.
-
-Different batches retain their dates in request labels, packing controls and newly recorded history. Unfilled quantities stay open for the next distribution.
-
-## How it works
-
-For each item, the planner uses largest-remainder proportional allocation. Five units against two equal four-unit requests produce allocations of three and two; stable request IDs resolve the tie. The result is a transparent starting rule. Volunteers review it and retain the final decision.
-
-The flow is **stock → household choices → review and adjust → confirm → history**. Recording is one IndexedDB transaction: the application checks the workspace revision, validates the plan against current stock and demand, then updates stock, outstanding requests and history together. An old confirmation is rejected if another tab has changed the workspace.
+The workflow is **stock → household choices → review and adjust → confirm → history**. The household chooses the items; the volunteer retains the final decision.
 
 ## How we built it
 
-The frontend uses semantic HTML, CSS and JavaScript modules. Business rules, input validation and persistence are separate modules, with no third-party runtime scripts or external API calls. Vercel serves the application over HTTPS. Records remain in this browser; no account is needed.
+| Layer | Implementation |
+| --- | --- |
+| Interface | Semantic HTML, responsive CSS and JavaScript modules; locally bundled Lucide icons |
+| Allocation | Largest-remainder proportional allocation for each item, with stable request IDs resolving ties |
+| Validation | Whole quantities, original-request bounds, stock conservation and bounded backup imports |
+| Persistence | IndexedDB with revision checks inside atomic write transactions |
+| Delivery | Vercel HTTPS hosting and restrictive security headers |
+| Verification | Twenty automated tests, including 1,000 generated allocation cases, plus browser workflows |
 
-The workspace has bounded, restorable backups, CSV formula neutralization, escaped display values and a restrictive content security policy. Background tab updates preserve stock-search focus and expanded history. Distribution detail tables are created when opened rather than rendering every historical row on startup.
+A confirmation is checked against the saved workspace revision. If another tab has changed the records, the old confirmation is rejected. Stock, outstanding requests and history are then updated together when a current plan is confirmed.
 
-The [repository README](https://github.com/adeelfalaksher900-creator/gathershelf/blob/main/README.md) includes setup instructions and an architecture diagram. The [verification report](https://github.com/adeelfalaksher900-creator/gathershelf/blob/main/docs/TESTING.md) records the checks and their limits.
+The workspace escapes displayed values, neutralizes spreadsheet formulas in CSV exports, and rejects oversized or malformed backups. Search focus and expanded history are retained during background updates.
+
+See the [architecture and setup instructions](https://github.com/adeelfalaksher900-creator/gathershelf#architecture) and the [verification report](https://github.com/adeelfalaksher900-creator/gathershelf/blob/main/docs/TESTING.md).
 
 ## Challenges we ran into
 
-The hardest engineering problem was keeping stock and requests consistent when two tabs were open. A plan that looked valid when a confirmation opened could be stale a moment later. Revision checks inside the write transaction prevent the old plan from silently replacing newer records.
-
-We also needed to preserve the distinction between what a household asked for and what a volunteer packed. Manual adjustments change the plan while the original request remains intact until a distribution is recorded. Backup size and write capacity use the same byte budget so an ordinary app-generated backup remains importable.
+A packing plan can become stale while its confirmation is open. Checking only the screen was insufficient; the revision must be checked inside the storage transaction. We also kept original household requests separate from temporary packing adjustments, and aligned save limits with the backup format so app-generated backups remain restorable.
 
 ## Accomplishments
 
-Twenty automated tests pass, including 1,000 generated allocation scenarios. They cover stock conservation, original request bounds, stale plans, malformed backups, UTF-8 capacity, batch dates, CSV export, storage retry recovery and aborted reads.
+In the recorded browser workflow, thirteen requested units produce a nine-unit plan. An over-stock adjustment is rejected, a valid eight-unit custom plan can be applied and reset, and a real second-tab stock update causes the old confirmation to fail safely. After reviewing the current plan, recording nine units leaves four requested units open.
 
-Browser testing exercised desktop and 390px mobile workflows. One desktop check recorded seven units from two dated stock batches, exported four matching history rows and restored the actual downloaded backup. A mobile workflow recorded three units and reopened its history through the More menu. These are functional checks using synthetic records, not evidence of field outcomes.
+The actual downloaded history CSV contains four packing lines totalling nine units. The downloaded backup contains three stock items, two open requests and one distribution, and is restored successfully through the interface. Automated checks cover allocation invariants, stale plans, validation, CSV formula injection, UTF-8 backup capacity, batch dates and storage failure recovery. Desktop and mobile workflows were also checked. These are functional checks using synthetic records; field outcomes have not yet been measured.
 
 ## What we learned
 
-Small operational details matter: a clear batch date, a useful shortage message, a safe retry, a retained search cursor and a backup that can actually be restored. Local storage keeps setup light, but its one-device boundary must stay clear. Mathematical consistency is useful; it cannot decide a household's needs.
+Operational details matter: clear counting units, visible dates, recoverable errors, retained search focus, and a backup that can actually be restored. A transparent calculation helps volunteers review a decision; it does not determine a household's needs.
 
-## What's next
+## What is next
 
-Test the workflow with pantry workers and households, compare task completion and errors against their current method, evaluate assistive-technology use, and investigate carefully controlled multi-user synchronization. These are future steps, not completed studies.
+Evaluate the workflow with pantry volunteers and households, compare task completion and errors against their current methods, broaden assistive-technology testing, and investigate controlled multi-user synchronization.
 
-## Operating boundaries
+## Practical boundaries
 
-GatherShelf is a single-device pantry workspace. It does not automatically synchronize devices or assess nutrition, food safety, allergies or eligibility. Volunteers must verify product labels, dates, quantities and suitability and apply their pantry's policies. No measured time saving, health outcome, security certification or guaranteed winning score is claimed.
+Records stay in this browser and do not synchronize automatically. Keep regular backups and use household references. Volunteers remain responsible for labels, dates, allergens, suitability and pantry policies; GatherShelf allocates requested quantities and does not assess food safety or eligibility.
 
 ## Research
 
 - [Current Use and Demand for Digital Tools to Enhance Food Pantry Management](https://pubmed.ncbi.nlm.nih.gov/39931051/)
 - [Regional Food Bank client-choice manual](https://regionalfoodbank.net/wp-content/uploads/Client-Choice-Manual.pdf)
-
-## Team fields
-
-Use the existing registered team and only confirmed contributions. Adeel Falak Sher provided project direction and review requests. No unconfirmed development role or teammate contribution should be invented. Answer any required assistance-disclosure fields accurately.
