@@ -22,6 +22,11 @@ function updateExample() {
   document.getElementById('example-shortfall').textContent=missing?`${missing} requested units remain unfilled.`:'All requested quantities can be packed.';
 }
 [stock,a,b].forEach(el=>el.addEventListener('input',updateExample));updateExample();
+const mobileMenu = document.querySelector('.site-mobile-menu');
+mobileMenu?.querySelectorAll('nav a').forEach(link=>link.addEventListener('click',()=>{mobileMenu.open=false;}));
+mobileMenu?.addEventListener('keydown',event=>{
+  if(event.key==='Escape' && mobileMenu.open){mobileMenu.open=false;mobileMenu.querySelector('summary').focus();}
+});
 if('IntersectionObserver' in window){
   const observer=new IntersectionObserver(entries=>{entries.forEach(entry=>{if(entry.isIntersecting){entry.target.classList.add('is-visible');observer.unobserve(entry.target);}});},{threshold:.15});
   document.querySelectorAll('.reveal').forEach(el=>observer.observe(el));

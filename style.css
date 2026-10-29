@@ -40,7 +40,7 @@ button, a, input, select, summary { -webkit-tap-highlight-color: transparent; }
 .text-link:hover { text-decoration: underline; text-underline-offset: 4px; }
 .muted { color: var(--muted); }
 /* Public website. The split composition follows the selected Dropbox page. */
-.site-header { height: 76px; padding: 0 36px; display: flex; align-items: center; gap: 46px; background: #fff; }
+.site-header { height: 76px; padding: 0 36px; display: flex; align-items: center; gap: 46px; background: #fff; position: relative; z-index: 30; }
 .site-links { display: flex; gap: 30px; align-items: center; font-size: 14px; font-weight: 550; }
 .site-links a:hover { text-decoration: underline; text-underline-offset: 6px; }
 .header-cta { margin-left: auto; border-radius: 0; min-height: 46px; padding: 12px 20px; }
@@ -311,17 +311,17 @@ dialog::backdrop { background: #0b14265c; }
 .guide-article .text-link { margin-top: 10px; }
 @keyframes arrive { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
 @keyframes dialog-enter { from { transform: translateY(8px) scale(.985); } to { transform: none; } }
-.site-header { animation: arrive .4s both; }
-.hero-message h1 { animation: arrive .55s .08s both; }
-.hero-message > p { animation: arrive .55s .15s both; }
-.hero-button,.hero-guide { animation: arrive .5s .22s both; }
-.calculator-window { animation: arrive .6s .3s both; }
-.reveal.is-visible { animation: arrive .6s both; }
+.site-header { animation: arrive .4s backwards; }
+.hero-message h1 { animation: arrive .55s .08s backwards; }
+.hero-message > p { animation: arrive .55s .15s backwards; }
+.hero-button,.hero-guide { animation: arrive .5s .22s backwards; }
+.calculator-window { animation: arrive .6s .3s backwards; }
+.reveal.is-visible { animation: arrive .6s backwards; }
 .workflow-link:nth-child(2) { animation-delay: .07s; }
 .workflow-link:nth-child(3) { animation-delay: .14s; }
-.app-content > * { animation: content-settle .16s both; }
+.app-content > * { animation: content-settle .16s backwards; }
 @keyframes content-settle { from { transform: translateY(3px); } to { transform: translateY(0); } }
-dialog[open] { animation: dialog-enter .2s ease both; }
+dialog[open] { animation: dialog-enter .2s ease backwards; }
 @media(min-width:1600px) { .hero-message { padding-left: calc((100vw - 1420px)/2); } }
 @media(max-width:1100px) {
   .site-header { padding: 0 25px; gap: 30px; }
