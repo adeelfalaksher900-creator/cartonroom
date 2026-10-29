@@ -2,7 +2,7 @@
 
 ## Automated checks
 
-**20 tests pass; 0 fail.** GitHub Actions also checks the syntax of every runtime JavaScript module. The verified test commit is `a0679ddfe630edab1654835fb4eef6d694206aaf`; its [pull-request run](https://github.com/adeelfalaksher900-creator/cartonroom/actions/runs/40906109571) passed. Runtime files match the Vercel production release; subsequent documentation edits do not change application behavior.
+**20 tests pass; 0 fail.** GitHub Actions also checks the syntax of every runtime JavaScript module. The verified test commit is `a0679ddfe630edab1654835fb4eef6d694206aaf`; its [pull-request run](https://github.com/adeelfalaksher900-creator/gathershelf/actions/runs/40906109571) passed. Runtime files match the Vercel production release; subsequent documentation edits do not change application behavior. PR #1 was merged with the user's authorization at `9986c260fa7fd24397ea15d9f325936be7693eb8`; the repository is now named `gathershelf`, and main remains protected.
 
 Coverage includes integer allocation and conservation across 1,000 generated stock/demand combinations, request bounds, shortages, outstanding demand, stale/tampered plans, manual adjustments, combined filtering and sorting, edit/delete guards, invalid dates and IDs, duplicate history IDs, UTF-8 backup capacity, batch dates, export, backup round trips and CSV formula neutralization. Storage regressions verify that two failed opens do not poison a third attempt and that an aborted read rejects instead of loading forever.
 

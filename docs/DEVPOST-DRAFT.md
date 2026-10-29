@@ -7,10 +7,10 @@
 | Project name | GatherShelf |
 | Tagline | Turn pantry stock and household choices into a clear, reviewable packing plan. |
 | Try it out | https://gathershelf.vercel.app/ |
-| Source code | https://github.com/adeelfalaksher900-creator/cartonroom/tree/gathershelf-rebuild |
+| Source code | https://github.com/adeelfalaksher900-creator/gathershelf |
 | Built with | JavaScript, HTML, CSS, IndexedDB, Lucide, Node.js, Vercel |
 | Thumbnail | Prepared separately: 1536 × 1024 PNG, 3:2. Not uploaded yet. |
-| Video and gallery | Reserved for the team's later review and authorization. |
+| Video and gallery | Production authorized by the user; upload status is tracked separately. The user will upload the video to YouTube. |
 
 **Preparation status:** This file is the prepared copy. A signed-in Devpost session is required to save it to an actual Devpost draft. No Devpost upload or final submission is claimed.
 
@@ -45,7 +45,7 @@ The frontend uses semantic HTML, CSS and JavaScript modules. Business rules, inp
 
 The workspace has bounded, restorable backups, CSV formula neutralization, escaped display values and a restrictive content security policy. Background tab updates preserve stock-search focus and expanded history. Distribution detail tables are created when opened rather than rendering every historical row on startup.
 
-The [repository README](https://github.com/adeelfalaksher900-creator/cartonroom/blob/gathershelf-rebuild/README.md) includes setup instructions and an architecture diagram. The [verification report](https://github.com/adeelfalaksher900-creator/cartonroom/blob/gathershelf-rebuild/docs/TESTING.md) records the checks and their limits.
+The [repository README](https://github.com/adeelfalaksher900-creator/gathershelf/blob/main/README.md) includes setup instructions and an architecture diagram. The [verification report](https://github.com/adeelfalaksher900-creator/gathershelf/blob/main/docs/TESTING.md) records the checks and their limits.
 
 ## Challenges we ran into
 
